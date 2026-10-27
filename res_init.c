@@ -579,11 +579,8 @@ res_vinit_from_file(res_state statp, int preinit, char *resconf_file)
 #endif
 		statp->nscount = 1;
 
-		/*
-		 * Force loopback queries to use TCP
-		 * so we don't take a timeout if named isn't running.
-		 */
-		statp->options |= RES_USEVC;
+		/* Apply the loopback-only TCP default after parsing the file.
+		 * A configured remote nameserver must retain normal UDP queries. */
 	}
 	
 	statp->ndots = 1;
@@ -932,7 +929,7 @@ res_vinit_from_file(res_state statp, int preinit, char *resconf_file)
 			}
 		}
 
-		if (nserv > 1) statp->nscount = nserv;
+		if (nserv > 0) statp->nscount = nserv;
 #ifdef RESOLVSORT
 		statp->nsort = nsort;
 #endif
@@ -946,6 +943,10 @@ res_vinit_from_file(res_state statp, int preinit, char *resconf_file)
 #ifdef NO_RESOLV_CONF
 	if(nserv == 0) nserv = get_nameservers(statp);
 #endif
+
+	/* Keep the original no-server loopback fallback, without forcing TCP
+	 * on configured servers. Explicit options usevc remains untouched. */
+	if ((isresdefault != 0) && (nserv == 0)) statp->options |= RES_USEVC;
 
 	if (isresdefault != 0)
 	{
